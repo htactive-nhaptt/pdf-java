@@ -1,6 +1,6 @@
 package com.audit.export.App.Business;
 
-import com.audit.export.App.Dao.ChildData;
+import com.audit.export.App.Dao.BodyData;
 import com.audit.export.App.Dao.TopData;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -10,153 +10,183 @@ import org.apache.poi.xssf.usermodel.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 public class GenerateExcelFile {
+
+    private static final short greyBackground =  IndexedColors.GREY_25_PERCENT.index;
+    private static final short blueBackground =  IndexedColors.BLUE.index;
+    private static final FillPatternType solidBackgroundPattern = FillPatternType.SOLID_FOREGROUND;
+    private static final BorderStyle thinBorder = BorderStyle.THIN;
+    private static final HorizontalAlignment leftHorizontal = HorizontalAlignment.LEFT;
+    private static final HorizontalAlignment centerHorizontal = HorizontalAlignment.CENTER;
+    private static final short fontSize10 = 10;
+    private static final String fontNameArial = "Arial";
+
+    public void fillCell(Object obj, Cell cell) {
+        if (obj instanceof Integer) {
+            cell.setCellValue((Integer) obj);
+        } else if (obj instanceof Double) {
+            cell.setCellValue((Double) obj);
+        } else if (obj instanceof Long) {
+            cell.setCellValue((Long) obj);
+        } else if (obj instanceof Boolean) {
+            cell.setCellValue((Boolean) obj);
+        } else if (obj instanceof String) {
+            cell.setCellValue(obj.toString());
+        } else  {
+            cell.setCellValue("");
+        }
+    }
+    public void setBorder(BorderStyle borderStyle, XSSFCellStyle cellStyle) {
+        cellStyle.setBorderBottom(borderStyle);
+        cellStyle.setBorderTop(borderStyle);
+        cellStyle.setBorderLeft(borderStyle);
+        cellStyle.setBorderRight(borderStyle);
+    }
+    public void mergeCell(List<CellRangeAddress> cellRangeAddresses, XSSFSheet spreadsheet) {
+        for(CellRangeAddress cellAddresses: cellRangeAddresses) {
+            spreadsheet.addMergedRegion(cellAddresses);
+        }
+    }
+    public void mergeCellBorder(BorderStyle borderStyle,List<CellRangeAddress> cellRangeAddresses, XSSFSheet spreadsheet) {
+        for(CellRangeAddress cellAddresses: cellRangeAddresses) {
+            RegionUtil.setBorderBottom(borderStyle, cellAddresses, spreadsheet);
+            RegionUtil.setBorderRight(borderStyle, cellAddresses, spreadsheet);
+        }
+    }
+    public void setBackGround(short backgroundColor, FillPatternType backgroundType, XSSFCellStyle cellStyle) {
+        cellStyle.setFillForegroundColor(backgroundColor);
+        cellStyle.setFillPattern(backgroundType);
+    }
+    public void setFont(String fontName, short fontSize, Font font, XSSFCellStyle cellStyle) {
+        font.setFontName(fontName);
+        font.setFontHeightInPoints(fontSize);
+        cellStyle.setFont(font);
+    }
+    public void setFont(String fontName, short fontSize, short fontColor,boolean isBold, Font font,XSSFCellStyle cellStyle) {
+        font.setFontName(fontName);
+        font.setFontHeightInPoints(fontSize);
+        font.setColor(fontColor);
+        font.setBold(isBold);
+        cellStyle.setFont(font);
+    }
+
+    public void generateTopPart(XSSFSheet spreadsheet,TopData topData, XSSFCellStyle topCellStyle, XSSFCellStyle titleCellStyle) {
+        // Render the top part
+        Set<String> topKeySet = topData.getData().keySet();
+        int topRowNumber = 0;
+        for(String key: topKeySet) {
+            int topCellNumber = 0;
+            XSSFRow topTopRow = spreadsheet.createRow(topRowNumber);
+            topRowNumber++;
+            Object[] topArrayObject = topData.getData().get(key);
+            for(Object obj: topArrayObject) {
+                XSSFCell cell;
+
+                //  because merge cell
+                if(topCellNumber == 2) cell = topTopRow.createCell(6);
+                else if(topCellNumber == 3) cell = topTopRow.createCell(8);
+                else cell = topTopRow.createCell(topCellNumber);
+                fillCell(obj, cell);
+                if(topCellNumber % 2 == 0) {
+                    cell.setCellStyle(titleCellStyle);
+                }
+                if(topCellNumber % 2 != 0) {
+                    cell.setCellStyle(topCellStyle);
+                }
+                topCellNumber++;
+            }
+        }
+    }
+    public void generateBodyPart(XSSFSheet spreadsheet,BodyData bodyData, XSSFCellStyle headerCellStyle, XSSFCellStyle dataCellStyle) {
+        Set<String> keySetDataBody = bodyData.getDataBody().keySet();
+        List<String> keySetDataHeader = bodyData.getHeaderBody();
+
+
+        // render header of body
+        int rowHeader = 5;
+        int cellHeaderNumber = 0;
+        XSSFRow row = spreadsheet.createRow(rowHeader);
+        for(String headerData: keySetDataHeader) {
+            XSSFCell cell = row.createCell(cellHeaderNumber);
+            fillCell(headerData, cell);
+            cell.setCellStyle(headerCellStyle);
+            cellHeaderNumber += 1;
+        }
+
+        // render body data
+        int rowStart = 6;
+        for(String key: keySetDataBody) {
+            int cellDataBodyNumber = 0;
+            XSSFRow rowBody = spreadsheet.createRow(rowStart++);
+            Object[] objectArray = bodyData.getDataBody().get(key);
+            for(Object obj: objectArray) {
+                XSSFCell cell = rowBody.createCell(cellDataBodyNumber);
+                fillCell(obj, cell);
+                cell.setCellStyle(dataCellStyle);
+                cellDataBodyNumber += 1;
+            }
+        }
+    }
+
     public void generate() throws IOException {
-        ChildData childData = new ChildData();
+        BodyData bodyData = new BodyData();
         TopData topData = new TopData();
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet spreadsheet = workbook.createSheet("Sheet1");
 
-
         // Create header CellStyle
         Font headerFont = workbook.createFont();
         XSSFCellStyle headerCellStyle = spreadsheet.getWorkbook().createCellStyle();
-        // setHeader Font
-        headerFont.setFontHeightInPoints((short)10);
-        headerFont.setFontName("Arial");
-
-        // fill foreground color ...
-        headerCellStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.index);
-        // and solid fill pattern produces solid grey cell fill
-        headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        headerCellStyle.setFont(headerFont);
-        headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
-        headerCellStyle.setBorderRight(BorderStyle.THIN);
-        headerCellStyle.setBorderLeft(BorderStyle.THIN);
-        headerCellStyle.setBorderTop(BorderStyle.THIN);
-        headerCellStyle.setBorderBottom(BorderStyle.THIN);
+        setFont(fontNameArial, fontSize10, headerFont, headerCellStyle);
+        setBackGround(greyBackground, solidBackgroundPattern, headerCellStyle);
+        headerCellStyle.setAlignment(centerHorizontal);
+        setBorder(thinBorder, headerCellStyle);
 
         // data type style
         Font dataFont = workbook.createFont();
         XSSFCellStyle dataCellStyle = spreadsheet.getWorkbook().createCellStyle();
-        dataFont.setFontName("Arial");
-        dataFont.setFontHeightInPoints((short) 10);
-        dataCellStyle.setAlignment(HorizontalAlignment.LEFT);
+        setFont(fontNameArial, fontSize10, dataFont, dataCellStyle);
+        dataCellStyle.setAlignment(leftHorizontal);
         dataCellStyle.setWrapText(true);
-        dataCellStyle.setFont(dataFont);
 
         // Top style
         Font topFont = workbook.createFont();
-        CellStyle topCellStyle = spreadsheet.getWorkbook().createCellStyle();
-        topCellStyle.setBorderTop(BorderStyle.THIN);
-        topCellStyle.setBorderBottom(BorderStyle.THIN);
-        topCellStyle.setBorderRight(BorderStyle.THIN);
-        topCellStyle.setBorderLeft(BorderStyle.THIN);
-        topFont.setFontName("Arial");
-        topFont.setFontHeightInPoints((short)10);
-        topCellStyle.setAlignment(HorizontalAlignment.LEFT);
-        topCellStyle.setFont(topFont);
+        XSSFCellStyle topCellStyle = spreadsheet.getWorkbook().createCellStyle();
+        setBorder(thinBorder, topCellStyle);
+        setFont(fontNameArial, fontSize10, topFont,topCellStyle);
+        topCellStyle.setAlignment(leftHorizontal);
 
         // TitleFont
         Font titleFont = workbook.createFont();
-        CellStyle titleCellStyle = spreadsheet.getWorkbook().createCellStyle();
-        // setHeader Font
-        titleFont.setFontHeightInPoints((short)10);
-        titleFont.setBold(true);
-        titleFont.setColor(IndexedColors.BLUE.index);
-        titleFont.setFontName("Arial");
-        titleCellStyle.setBorderRight(BorderStyle.THIN);
-        titleCellStyle.setBorderLeft(BorderStyle.THIN);
-        titleCellStyle.setBorderTop(BorderStyle.THIN);
-        titleCellStyle.setBorderBottom(BorderStyle.THIN);
-        // fill foreground color ...
-        titleCellStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.index);
-        // and solid fill pattern produces solid grey cell fill
-        titleCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        titleCellStyle.setFont(titleFont);
+        XSSFCellStyle titleCellStyle = spreadsheet.getWorkbook().createCellStyle();
+        setFont(fontNameArial, fontSize10, blueBackground, true, titleFont, titleCellStyle);
+        setBorder(thinBorder, titleCellStyle);
+        setBackGround(greyBackground, solidBackgroundPattern, titleCellStyle);
+        titleCellStyle.setAlignment(leftHorizontal);
 
-        // Value Style
-        XSSFCellStyle valueCellStyle = spreadsheet.getWorkbook().createCellStyle();
-        valueCellStyle.setAlignment(HorizontalAlignment.LEFT);
-
-        // TOP
-        Set<String> topKeySet = topData.getData().keySet();
-        int topRowNumber = 0;
-        for(String key: topKeySet) {
-            int topCellNumber = 0;
-
-            XSSFRow topTopRow = spreadsheet.createRow(topRowNumber);
-            topRowNumber++;
-
-            Object[] topArrayObject = topData.getData().get(key);
-            for(Object obj: topArrayObject) {
-                XSSFCell cell;
-
-                if(topCellNumber == 2) cell = topTopRow.createCell(6);
-                else if(topCellNumber == 3) cell = topTopRow.createCell(8);
-                else cell = topTopRow.createCell(topCellNumber);
-                topCellNumber++;
-                cell.setCellStyle(topCellStyle);
-                if(obj instanceof String) {
-                    cell.setCellValue((String) obj);
-                } else if(obj instanceof  Integer) {
-                    cell.setCellValue((Integer) obj);
-                }
-                if(topCellNumber % 2 != 0) {
-                    cell.setCellStyle(titleCellStyle);
-                }
-                else {
-                    cell.setCellStyle(topCellStyle);
-                }
-
-            }
-        }
-
-        // The table data
-        // Iterate over data and write to sheet
-        Set<String> keySet = childData.getData().keySet();
-        int rowNumber = 5;
-        for(String key: keySet) {
-            int cellNum = 0;
-            XSSFRow row = spreadsheet.createRow(rowNumber++);
-            row.setHeight((short)-1);
-            Object[] objectArray = childData.getData().get(key);
-            for(Object obj: objectArray) {
-                XSSFCell cell = row.createCell(cellNum++);
-                // if rowNum is 6 (first row was created before) then set header CellStyle
-                if (rowNumber == 6) {
-                    cell.setCellValue((String) obj);
-                    cell.setCellStyle(headerCellStyle);
-                }
-                else if(obj instanceof String) {
-                    cell.setCellValue((String) obj);
-                    row.setRowStyle(dataCellStyle);
-                    cell.setCellStyle(dataCellStyle);
-                } else if(obj instanceof  Integer) {
-                    cell.setCellValue((Integer) obj);
-                    cell.setCellStyle(dataCellStyle);
-                }
-            }
-        }
+        // Render the top part
+        generateTopPart(spreadsheet, topData, topCellStyle, titleCellStyle);
+        // Render the body part
+        generateBodyPart(spreadsheet,bodyData, headerCellStyle, dataCellStyle);
 
         for(int column = 0; column < 10; column++) {
             spreadsheet.autoSizeColumn(column);
         }
 
-        for(int row = 0; row <= 4; row++) {
-            spreadsheet.addMergedRegion(new CellRangeAddress(row, row, 1, 5));
-            spreadsheet.addMergedRegion(new CellRangeAddress(row, row, 6, 7));
-            spreadsheet.addMergedRegion(new CellRangeAddress(row, row, 8, 11));
-            RegionUtil.setBorderBottom(BorderStyle.THIN, new CellRangeAddress(row, row, 1, 5), spreadsheet);
-            RegionUtil.setBorderBottom(BorderStyle.THIN, new CellRangeAddress(row, row, 6, 7), spreadsheet);
-            RegionUtil.setBorderBottom(BorderStyle.THIN, new CellRangeAddress(row, row, 8, 11), spreadsheet);
-            RegionUtil.setBorderRight(BorderStyle.THIN, new CellRangeAddress(row, row, 1, 5), spreadsheet);
-            RegionUtil.setBorderRight(BorderStyle.THIN, new CellRangeAddress(row, row, 6, 7), spreadsheet);
-            RegionUtil.setBorderRight(BorderStyle.THIN, new CellRangeAddress(row, row, 8, 11), spreadsheet);
 
+        // merge the cell on top and make border for it
+        for(int row = 0; row <= 4; row++) {
+            List<CellRangeAddress> cellRangeAddresses = new ArrayList<>();
+            cellRangeAddresses.add( new CellRangeAddress(row, row, 1, 5));
+            cellRangeAddresses.add( new CellRangeAddress(row, row, 6, 7));
+            cellRangeAddresses.add( new CellRangeAddress(row, row, 8, 11));
+            mergeCell(cellRangeAddresses, spreadsheet);
+            mergeCellBorder(thinBorder, cellRangeAddresses, spreadsheet);
         }
 
         FileOutputStream out = new FileOutputStream(new File("export.xlsx"));
