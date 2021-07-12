@@ -1,7 +1,7 @@
-package com.audit.export.App.Business;
+package com.audit.export.App.business;
 
-import com.audit.export.App.Dao.BodyData;
-import com.audit.export.App.Dao.TopData;
+import com.audit.export.App.dao.excel.BodyData;
+import com.audit.export.App.dao.excel.TopData;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.RegionUtil;
@@ -105,7 +105,6 @@ public class GenerateExcelFile {
         Set<String> keySetDataBody = bodyData.getDataBody().keySet();
         List<String> keySetDataHeader = bodyData.getHeaderBody();
 
-
         // render header of body
         int rowHeader = 5;
         int cellHeaderNumber = 0;
@@ -131,7 +130,6 @@ public class GenerateExcelFile {
             }
         }
     }
-
     public void generate() throws IOException {
         BodyData bodyData = new BodyData();
         TopData topData = new TopData();
