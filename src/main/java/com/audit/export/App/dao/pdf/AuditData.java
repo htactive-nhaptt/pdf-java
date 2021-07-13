@@ -3,6 +3,8 @@ import com.audit.export.App.dao.pdf.entity.Article;
 import com.audit.export.App.dao.pdf.entity.ProductGroup;
 import com.audit.export.App.dao.pdf.entity.ShopData;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 public class AuditData {
 
@@ -12,6 +14,11 @@ public class AuditData {
                 new ShopData("Shop", "3003"),
                 new ShopData("Print Date", "10.06.2019")
         );
+    }
+
+    public List<String> getHeader() {
+        String [] headerStrings =  {"BRAND", "MODEL", "FEATURE TEXT", "M.P.", "ARTICLE", "PRO", "SAL"};
+       return Arrays.asList(headerStrings);
     }
 
     public List<ProductGroup> getDataBody() {
@@ -35,5 +42,7 @@ public class AuditData {
                         new Article(145908584, "SAMSUNG", "LEAPAD 10", ft, "", "", "", "")
                 ))
         );
+
+
     }
 }
